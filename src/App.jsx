@@ -356,73 +356,72 @@ function StarField() {
 }
 
 // ==========================================
-// 5. 人物星点组件
+// 5. 人物星点组件（HTML 版本，避免 SVG 文字缩放问题）
 // ==========================================
 function FigureStar({ figure, onClick, isSelected }) {
   const color = getDynastyColor(figure.dynasty);
   const catInfo = getCategoryInfo(figure.category);
-  const CatIcon = catInfo.icon;
+  const dotSize = Math.round(figure.size * 10) + 8; // 18~23px
 
   return (
-    <motion.g
-      style={{ cursor: 'pointer' }}
+    <motion.div
+      className="absolute flex flex-col items-center cursor-pointer group"
+      style={{
+        left: `${figure.x}%`,
+        top: `${figure.y}%`,
+        transform: 'translate(-50%, -50%)',
+      }}
       onClick={() => onClick(figure)}
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ delay: Math.random() * 0.5, duration: 0.5 }}
-      whileHover={{ scale: 1.3 }}
+      whileHover={{ scale: 1.2 }}
     >
-      {/* 光晕 */}
-      <circle
-        cx={`${figure.x}%`}
-        cy={`${figure.y}%`}
-        r={figure.size * 18}
-        fill={color}
-        opacity={0.08}
-      />
-      {/* 星点外圈 */}
-      <circle
-        cx={`${figure.x}%`}
-        cy={`${figure.y}%`}
-        r={figure.size * 8}
-        fill="none"
-        stroke={color}
-        strokeWidth="1"
-        opacity={0.4}
-      />
-      {/* 核心星点 */}
-      <circle
-        cx={`${figure.x}%`}
-        cy={`${figure.y}%`}
-        r={figure.size * 4}
-        fill={color}
-        opacity={0.9}
-        style={{ filter: `drop-shadow(0 0 ${figure.size * 6}px ${color})` }}
-      />
-      {/* 人物名 */}
-      <text
-        x={`${figure.x}%`}
-        y={`${figure.y + figure.size * 5}%`}
-        textAnchor="middle"
-        fill="#e2e8f0"
-        fontSize={figure.size * 9}
-        fontFamily="'Noto Serif SC', serif"
-        opacity={0.9}
-      >
-        {figure.name}
-      </text>
-      {/* 分类小图标标签 */}
-      <text
-        x={`${figure.x}%`}
-        y={`${figure.y - figure.size * 7}%`}
-        textAnchor="middle"
-        fill={catInfo.color}
-        fontSize={figure.size * 7}
-        opacity={0.7}
+      {/* 称号标签（上方） */}
+      <span
+        className="text-[10px] leading-tight mb-0.5 opacity-70 whitespace-nowrap font-medium"
+        style={{ color: catInfo.color }}
       >
         {figure.title}
-      </text>
-    </motion.g>
+      </span>
+
+      {/* 光晕 + 星点 */}
+      <div className="relative flex items-center justify-center">
+        <div
+          className="absolute rounded-full opacity-20"
+          style={{
+            width: dotSize * 3,
+            height: dotSize * 3,
+            background: `radial-gradient(circle, ${color}40, transparent)`,
+          }}
+        />
+        <div
+          className="absolute rounded-full border opacity-40"
+          style={{
+            width: dotSize * 2,
+            height: dotSize * 2,
+            borderColor: color,
+          }}
+        />
+        <div
+          className="relative rounded-full"
+          style={{
+            width: dotSize,
+            height: dotSize,
+            background: color,
+            boxShadow: `0 0 ${dotSize}px ${color}, 0 0 ${dotSize * 2}px ${color}40`,
+          }}
+        />
+      </div>
+
+      {/* 人物名（下方） */}
+      <span
+        className="text-xs leading-tight mt-1 font-bold whitespace-nowrap"
+        style={{ color: '#e2e8f0' }}
+      >
+        {figure.name}
+      </span>
+    </motion.div>
   );
 }
 
@@ -969,53 +968,48 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* 星图主区域 */}
-        <div className="flex-1 relative">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
-            {/* 朝代分区背景 */}
-            {DYNASTIES.map((d, i) => (
-              <rect
-                key={d.id}
-                x="0" y={i * (100 / DYNASTIES.length)}
-                width="100" height={100 / DYNASTIES.length}
-                fill={d.color}
-                opacity={activeDynasty === d.id ? 0.06 : 0.01}
-                rx="2"
-              />
-            ))}
+          <div className="flex-1 relative overflow-hidden">
+          {/* 朝代分区背景 */}
+          {DYNASTIES.map((d, i) => (
+            <div
+              key={d.id}
+              className="absolute left-0 right-0 transition-opacity duration-500"
+              style={{
+                top: `${i * (100 / DYNASTIES.length)}%`,
+                height: `${100 / DYNASTIES.length}%`,
+                backgroundColor: d.color,
+                opacity: activeDynasty === d.id ? 0.06 : 0.01,
+              }}
+            />
+          ))}
 
-            {/* 连线（同一朝代的人物之间） */}
+          {/* 连线（同一朝代的人物之间） */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
             {DYNASTIES.map(d => {
-              const dynastyFigures = filteredFigures.filter(f => f.dynasty === d.id);
-              if (dynastyFigures.length < 2) return null;
-              const lines = [];
-              for (let i = 0; i < dynastyFigures.length - 1; i++) {
-                lines.push(
-                  <line
-                    key={`${d.id}-${i}`}
-                    x1={`${dynastyFigures[i].x}%`}
-                    y1={`${dynastyFigures[i].y}%`}
-                    x2={`${dynastyFigures[i + 1].x}%`}
-                    y2={`${dynastyFigures[i + 1].y}%`}
-                    stroke={d.color}
-                    strokeWidth="0.15"
-                    opacity="0.15"
-                  />
-                );
-              }
-              return <g key={d.id}>{lines}</g>;
+              const df = filteredFigures.filter(f => f.dynasty === d.id);
+              if (df.length < 2) return null;
+              return df.slice(0, -1).map((f, i) => (
+                <line
+                  key={`${d.id}-${i}`}
+                  x1={`${f.x}%`} y1={`${f.y}%`}
+                  x2={`${df[i + 1].x}%`} y2={`${df[i + 1].y}%`}
+                  stroke={d.color}
+                  strokeWidth="0.15"
+                  opacity="0.15"
+                />
+              ));
             })}
-
-            {/* 人物星点 */}
-            {filteredFigures.map(f => (
-              <FigureStar
-                key={f.id}
-                figure={f}
-                onClick={handleFigureClick}
-                isSelected={selectedFigure?.id === f.id}
-              />
-            ))}
           </svg>
+
+          {/* 人物星点 */}
+          {filteredFigures.map(f => (
+            <FigureStar
+              key={f.id}
+              figure={f}
+              onClick={handleFigureClick}
+              isSelected={selectedFigure?.id === f.id}
+            />
+          ))}
 
           {/* 空状态 */}
           {filteredFigures.length === 0 && (
